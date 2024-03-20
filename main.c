@@ -22,7 +22,7 @@ const float
     GRAVITY = 0.2f,
     RADIUS = 5.0f,
     STARTSPACING = RADIUS * 3.0f,
-    BOUNCEDAMP = 0.99f;
+    BOUNCEDAMP = 0.7f;
 
 Point InitializePointPosition( Vector2 pos ) {
     return (Point){ pos, (Vector2){0.0f, 0.0f} };
@@ -48,8 +48,22 @@ void DrawPoints( float radius ) {
 }
 
 void PointCollisions( Point* v ) {
-    if      ( v->pos.x < 0.0f || v->pos.x > SCREENWIDTH  ) v->vel = Vector2Multiply( v->vel, (Vector2){-BOUNCEDAMP, 0} );
-    else if ( v->pos.y < 0.0f || v->pos.y > SCREENHEIGHT ) v->vel = Vector2Multiply( v->vel, (Vector2){0, -BOUNCEDAMP} );
+    if ( v->pos.x < RADIUS ) {
+        v->pos.x = RADIUS;
+        v->vel.x *= -BOUNCEDAMP;
+    } else if ( v->pos.x > SCREENWIDTH-RADIUS ) {
+        v->pos.x = SCREENWIDTH-RADIUS;
+        v->vel.x *= -BOUNCEDAMP;
+    }
+
+    if ( v->pos.y < RADIUS ) {
+        v->pos.y = RADIUS;
+        v->vel.y *= -BOUNCEDAMP;
+    } else if ( v->pos.y > SCREENHEIGHT-RADIUS ) {
+        v->pos.y = SCREENHEIGHT-RADIUS;
+        v->vel.y *= -BOUNCEDAMP;
+    }
+
 }
 
 void UpdatePoints() {
