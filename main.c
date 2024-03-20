@@ -2,12 +2,10 @@
 #include "raymath.h"
 #include "math.h"
 
-#define RIGHT Vector2(0,  1)
-#define LEFT  Vector2(0, -1)
-#define UP    Vector2(-1, 0)
-#define DOWN  Vector2( 1, 0)
 
 #define POINTBUFFERSIZE 100
+
+
 
 struct Point {
     Vector2 pos, vel;
@@ -16,7 +14,15 @@ struct Point {
 
 Point PointBuffer[POINTBUFFERSIZE];
 
-const float GRAVITY = 0.2f;
+const int
+    SCREENWIDTH = 1200,
+    SCREENHEIGHT = 800;
+
+const float
+    GRAVITY = 0.2f,
+    RADIUS = 5.0f,
+    STARTSPACING = RADIUS * 3.0f,
+    BOUNCEDAMP = 0.99f;
 
 Point InitializePointPosition( Vector2 pos ) {
     return (Point){ pos, (Vector2){0.0f, 0.0f} };
@@ -41,10 +47,17 @@ void DrawPoints( float radius ) {
         DrawCircleV(PointBuffer[i].pos, radius, WHITE);
 }
 
+void PointCollisions( Point* v ) {
+    if      ( v->pos.x < 0.0f || v->pos.x > SCREENWIDTH  ) v->vel = Vector2Multiply( v->vel, (Vector2){-BOUNCEDAMP, 0} );
+    else if ( v->pos.y < 0.0f || v->pos.y > SCREENHEIGHT ) v->vel = Vector2Multiply( v->vel, (Vector2){0, -BOUNCEDAMP} );
+}
+
 void UpdatePoints() {
     for ( int i = 0; i < POINTBUFFERSIZE; i++ ) {
         PointBuffer[i].vel = Vector2Add( PointBuffer[i].vel, (Vector2){0.0f, GRAVITY} );
         PointBuffer[i].pos = Vector2Add( PointBuffer[i].pos, PointBuffer[i].vel );
+
+        PointCollisions( PointBuffer+i );
     }
 }
 
@@ -56,22 +69,18 @@ void Draw() {
     BeginDrawing();
         ClearBackground(BLACK);
 
-        DrawPoints( 5.0f );
+        DrawPoints( RADIUS );
 
     EndDrawing();
 }
 
 int main() {
-    const int
-        screenWidth = 1200,
-        screenHeight = 800;
-
-    InitWindow(screenWidth, screenHeight, "Fluid Simulation");
+    InitWindow(SCREENWIDTH, SCREENHEIGHT, "Fluid Simulation");
 
     SetTargetFPS(60);
 
     // Initialize
-    PopulatePointBuffer( (Vector2){300.0f, 300.0f}, 15.0f );
+    PopulatePointBuffer( (Vector2){300.0f, 300.0f}, STARTSPACING );
 
 
     while ( !WindowShouldClose() ) {
