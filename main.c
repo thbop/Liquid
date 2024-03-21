@@ -4,8 +4,17 @@
 
 #define POINTBUFFERSIZE 100
 
+Vector2 Vector2DivideValue( Vector2 p, float v ) {
+    return (Vector2){ p.x / v, p.y / v };
+}
+
+Vector2 Vector2MultiplyValue( Vector2 p, float v ) {
+    return (Vector2){ p.x * v, p.y * v };
+}
+
 struct Point {
     Vector2 pos, vel;
+    float areaDensity;
 } typedef Point;
 
 
@@ -21,8 +30,10 @@ const float
     MASS = 1.0f,
     STARTSPACING = RADIUS * 3.0f,
     BOUNCEDAMP = 0.7f,
-    SMOOTHINGRADIUS = 200.0f,
-    SMOOTHINGVOLUME = (SMOOTHINGRADIUS*SMOOTHINGRADIUS*SMOOTHINGRADIUS*PI) / 2.0f; // ish Wolfram says pi*s^4/2
+    SMOOTHINGRADIUS = 1.2f,
+    SMOOTHINGVOLUME = (SMOOTHINGRADIUS*SMOOTHINGRADIUS*SMOOTHINGRADIUS*SMOOTHINGRADIUS*PI) / 2.0f, // ish Wolfram says pi*s^4/2
+    TARGETDENSITY = 2.75f,
+    PRESSUREMULTIPLIER = 0.5f;
 
 // int mode
 Vector2 Vector2Random( int minX, int maxX, int minY, int maxY ) {
@@ -81,6 +92,11 @@ float SmoothingKernel( float x ) {
     return v*v*v / SMOOTHINGVOLUME;
 }
 
+float SmoothingKernelSlope( float x ) {
+    float v = 3 * fmax( 0.0, SMOOTHINGRADIUS - x );
+    return v*v;
+}
+
 float CalculateDensity( Vector2 samplePoint ) {
     float density = 0;
     for ( int i = 0; i < POINTBUFFERSIZE; i++ ) {
@@ -90,17 +106,47 @@ float CalculateDensity( Vector2 samplePoint ) {
     return density;
 }
 
+float ConvertDensityToPressure( float density ) {
+    float densityError = density - TARGETDENSITY;
+    return densityError * PRESSUREMULTIPLIER; // return pressure
+}
+
+Vector2 CalculatePressureForce( int PointIndex ) {
+    Vector2
+        samplePoint = PointBuffer[PointIndex].pos,
+        pressureForce = {0.0f};
+    
+    for ( int i = 0; i < POINTBUFFERSIZE; i++ ) {
+        if ( PointIndex == i ) break;
+        float distance = Vector2Distance( samplePoint, PointBuffer[i].pos );
+        Vector2 direction =  Vector2DivideValue( Vector2Subtract( PointBuffer[i].pos, samplePoint ), distance );
+        float slope = SmoothingKernelSlope( distance );
+        float density = PointBuffer[i].areaDensity;
+        float pressure = ConvertDensityToPressure(density);
+
+        // gradient += -pressure * direction * slope * mass / density;
+        pressureForce = Vector2Add( pressureForce, Vector2DivideValue( Vector2MultiplyValue( direction, -slope * MASS * pressure ), density ) );
+    }
+    return pressureForce;
+}
+
+
 void UpdatePoints() {
     for ( int i = 0; i < POINTBUFFERSIZE; i++ ) {
         PointBuffer[i].vel = Vector2Add( PointBuffer[i].vel, (Vector2){0.0f, GRAVITY} );
-        PointBuffer[i].pos = Vector2Add( PointBuffer[i].pos, PointBuffer[i].vel );
+        PointBuffer[i].areaDensity = CalculateDensity( PointBuffer[i].pos ); // Cache densities
 
+        Vector2 pressureForce = CalculatePressureForce( i );
+        Vector2 pressureAcceleration = Vector2DivideValue( pressureForce, PointBuffer[i].areaDensity );
+        PointBuffer[i].vel = Vector2Add( PointBuffer[i].vel, pressureAcceleration );
+
+        PointBuffer[i].pos = Vector2Add( PointBuffer[i].pos, PointBuffer[i].vel );
         PointCollisions( PointBuffer+i );
     }
 }
 
 void Update() {
-    // UpdatePoints();
+    UpdatePoints();
 }
 
 void Draw() {
@@ -109,7 +155,7 @@ void Draw() {
 
         DrawPoints( RADIUS );
 
-        DrawText( TextFormat( "DENSITY: %F", CalculateDensity( GetMousePosition() ) ), 10, 10, 20, WHITE );
+        // DrawText( TextFormat( "DENSITY: %F", CalculateDensity( GetMousePosition() ) ), 10, 10, 20, WHITE );
 
     EndDrawing();
 }
