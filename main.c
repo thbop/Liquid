@@ -2,7 +2,7 @@
 #include "raymath.h"
 #include "math.h"
 
-#define POINTBUFFERSIZE 100
+#define POINTBUFFERSIZE 400
 
 Vector2 Vector2DivideValue( Vector2 p, float v ) {
     return (Vector2){ p.x / v, p.y / v };
@@ -119,7 +119,7 @@ Vector2 CalculatePressureForce( int PointIndex ) {
     for ( int i = 0; i < POINTBUFFERSIZE; i++ ) {
         if ( PointIndex == i ) break;
         float distance = Vector2Distance( samplePoint, PointBuffer[i].pos );
-        Vector2 direction =  Vector2DivideValue( Vector2Subtract( PointBuffer[i].pos, samplePoint ), distance );
+        Vector2 direction = distance == 0 ? Vector2Random(-1, 1, -1, 1) : Vector2DivideValue( Vector2Subtract( PointBuffer[i].pos, samplePoint ), distance );
         float slope = SmoothingKernelSlope( distance );
         float density = PointBuffer[i].areaDensity;
         float pressure = ConvertDensityToPressure(density);
@@ -133,7 +133,7 @@ Vector2 CalculatePressureForce( int PointIndex ) {
 
 void UpdatePoints() {
     for ( int i = 0; i < POINTBUFFERSIZE; i++ ) {
-        PointBuffer[i].vel = Vector2Add( PointBuffer[i].vel, (Vector2){0.0f, GRAVITY} );
+        // PointBuffer[i].vel = Vector2Add( PointBuffer[i].vel, (Vector2){0.0f, GRAVITY} );
         PointBuffer[i].areaDensity = CalculateDensity( PointBuffer[i].pos ); // Cache densities
 
         Vector2 pressureForce = CalculatePressureForce( i );
